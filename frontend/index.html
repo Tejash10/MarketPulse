@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        MarketPulse | Stock & Cryptocurrency Dashboard
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+</head>
+
+<body>
+
+
+<!-- =========================
+     NAVBAR
+========================= -->
+
+<header class="navbar">
+
+    <div class="logo">
+        Market<span>Pulse</span>
+    </div>
+
+    <nav>
+
+        <a href="#home">
+            Home
+        </a>
+
+        <a href="#stocks-section">
+            Stocks
+        </a>
+
+        <a href="#crypto-section">
+            Crypto
+        </a>
+
+        <a href="#watchlist">
+            Watchlist
+        </a>
+
+    </nav>
+
+</header>
+
+
+<!-- =========================
+     HERO
+========================= -->
+
+<section
+    id="home"
+    class="hero"
+>
+
+    <div class="hero-content">
+
+        <p class="hero-label">
+            MARKET INTELLIGENCE PLATFORM
+        </p>
+
+        <h1>
+            Stock & Cryptocurrency
+            <br>
+            Market Dashboard
+        </h1>
+
+        <p>
+            Track market prices, performance,
+            trends and investment insights
+            in one place.
+        </p>
+
+
+        <div class="search-box">
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search stock or cryptocurrency..."
+            >
+
+            <button
+                onclick="searchAsset()"
+            >
+                Search
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     MARKET FILTER
+========================= -->
+
+<section class="market-filter">
+
+    <div class="filter-title">
+
+        <h2>
+            Market Overview
+        </h2>
+
+        <p>
+            Explore stocks and cryptocurrencies
+        </p>
+
+    </div>
+
+
+    <div class="filter-buttons">
+
+        <button
+            class="filter-btn active"
+            onclick="filterMarket('all', this)"
+        >
+            All
+        </button>
+
+        <button
+            class="filter-btn"
+            onclick="filterMarket('stocks', this)"
+        >
+            Stocks
+        </button>
+
+        <button
+            class="filter-btn"
+            onclick="filterMarket('crypto', this)"
+        >
+            Crypto
+        </button>
+
+    </div>
+
+
+    <div class="market-update-status">
+
+        <span class="live-dot"></span>
+
+        <span>
+            Market data
+        </span>
+
+        <span class="update-divider">
+            |
+        </span>
+
+        <span id="lastUpdated">
+            Updating...
+        </span>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     SUMMARY
+========================= -->
+
+<section class="summary">
+
+    <div class="summary-card">
+
+        <div class="summary-icon">
+            💰
+        </div>
+
+        <div>
+
+            <p>
+                Total Market Cap
+            </p>
+
+            <h3 id="totalMarketCap">
+                Loading...
+            </h3>
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-icon">
+            📊
+        </div>
+
+        <div>
+
+            <p>
+                Average Price
+            </p>
+
+            <h3 id="averagePrice">
+                Loading...
+            </h3>
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-icon">
+            🟢
+        </div>
+
+        <div>
+
+            <p>
+                Best Performer
+            </p>
+
+            <h3 id="bestPerformer">
+                Loading...
+            </h3>
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-icon">
+            🔴
+        </div>
+
+        <div>
+
+            <p>
+                Worst Performer
+            </p>
+
+            <h3 id="worstPerformer">
+                Loading...
+            </h3>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     STOCKS
+========================= -->
+
+<section
+    id="stocks-section"
+    class="market-section"
+>
+
+    <div class="section-title">
+
+        <h2>
+            Stock Market
+        </h2>
+
+        <p>
+            Indian stock market overview
+        </p>
+
+    </div>
+
+
+    <div
+        id="stocks"
+        class="market-grid"
+    >
+
+        <p class="loading">
+            Loading stocks...
+        </p>
+
+    </div>
+
+
+    <button
+        id="stocksViewButton"
+        class="view-all-btn"
+        onclick="toggleStocks()"
+    >
+        View All Stocks
+    </button>
+
+</section>
+
+
+<!-- =========================
+     CRYPTO
+========================= -->
+
+<section
+    id="crypto-section"
+    class="market-section crypto-section"
+>
+
+    <div class="section-title">
+
+        <h2>
+            Cryptocurrency Market
+        </h2>
+
+        <p>
+            Top cryptocurrency market data
+        </p>
+
+    </div>
+
+
+    <div
+        id="crypto"
+        class="market-grid"
+    >
+
+        <p class="loading">
+            Loading cryptocurrency...
+        </p>
+
+    </div>
+
+
+    <button
+        id="cryptoViewButton"
+        class="view-all-btn"
+        onclick="toggleCrypto()"
+    >
+        View All Crypto
+    </button>
+
+</section>
+
+
+<!-- =========================
+     MARKET CHART
+========================= -->
+
+<section class="chart-section">
+
+    <div class="section-title">
+
+        <h2>
+            Market Performance
+        </h2>
+
+        <p>
+            Compare cryptocurrency performance
+        </p>
+
+    </div>
+
+
+    <div class="chart-container">
+
+        <canvas
+            id="marketChart"
+        ></canvas>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     TOP GAINERS / LOSERS
+========================= -->
+
+<section class="gainers-losers-section">
+
+    <div class="section-title">
+
+        <h2>
+            Market Movers
+        </h2>
+
+        <p>
+            Top gainers and losers
+        </p>
+
+    </div>
+
+
+    <div class="gainers-losers-grid">
+
+
+        <div class="movement-card">
+
+            <h3>
+                🟢 Top Gainers
+            </h3>
+
+            <div
+                id="topGainers"
+            >
+                Loading...
+            </div>
+
+        </div>
+
+
+        <div class="movement-card">
+
+            <h3>
+                🔴 Top Losers
+            </h3>
+
+            <div
+                id="topLosers"
+            >
+                Loading...
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     ASSET DETAILS
+========================= -->
+
+<section
+    id="assetDetails"
+    class="asset-details"
+>
+
+    <div class="section-title">
+
+        <h2 id="detailTitle">
+            Asset Details
+        </h2>
+
+        <p id="detailSubtitle">
+            Select a stock or cryptocurrency
+            to view analysis
+        </p>
+
+    </div>
+
+
+    <div class="detail-grid">
+
+
+        <div class="detail-card">
+
+            <span>
+                Current Price
+            </span>
+
+            <h3 id="detailPrice">
+                -
+            </h3>
+
+        </div>
+
+
+        <div class="detail-card">
+
+            <span>
+                24h Change
+            </span>
+
+            <h3 id="detailChange">
+                -
+            </h3>
+
+        </div>
+
+
+        <div class="detail-card">
+
+            <span>
+                Day High
+            </span>
+
+            <h3 id="detailHigh">
+                -
+            </h3>
+
+        </div>
+
+
+        <div class="detail-card">
+
+            <span>
+                Day Low
+            </span>
+
+            <h3 id="detailLow">
+                -
+            </h3>
+
+        </div>
+
+    </div>
+
+
+    <div class="analysis-card">
+
+        <h3>
+            Market Analysis
+        </h3>
+
+        <p id="detailAnalysis">
+
+            Select an asset to see
+            market analysis.
+
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     WATCHLIST
+========================= -->
+
+<section
+    id="watchlist"
+    class="watchlist-section"
+>
+
+    <div class="section-title">
+
+        <h2>
+            My Watchlist
+        </h2>
+
+        <p>
+            Track assets you're interested in
+        </p>
+
+    </div>
+
+
+    <div
+        id="watchlistContainer"
+        class="watchlist-container"
+    >
+
+        <p class="empty-watchlist">
+            Your watchlist is empty.
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+<footer>
+
+    <div class="footer-content">
+
+        <div>
+
+            <h2>
+                MarketPulse
+            </h2>
+
+            <p>
+                Stock & Cryptocurrency
+                Market Intelligence Dashboard
+            </p>
+
+        </div>
+
+
+        <div>
+
+            <p>
+                Built with
+                Python, Flask,
+                JavaScript and APIs
+            </p>
+
+            <p>
+                © 2026 MarketPulse
+            </p>
+
+        </div>
+
+    </div>
+
+</footer>
+
+
+<!-- Chart.js -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/chart.js"
+></script>
+
+
+<!-- Application JS -->
+
+<script
+    src="js/app.js"
+></script>
+
+
+</body>
+
+</html>
