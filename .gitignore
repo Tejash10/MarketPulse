@@ -1,0 +1,14 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Private credentials
+.env
+.env.local
+
+# VS Code settings
+.vscode/

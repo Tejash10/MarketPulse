@@ -1,13 +1,72 @@
-// ==========================================
-// MARKETPULSE - JAVASCRIPT
-// ==========================================
+/* =====================================
+   MARKETPULSE
+   Main Application JavaScript
+===================================== */
 
 
-// ==========================================
-// CRYPTOCURRENCY
-// ==========================================
+/* =====================================
+   GLOBAL DATA
+===================================== */
+
+let cryptoData = [];
+
+let stockData = [];
+
+let marketChart = null;
+
+let stocksExpanded = false;
+
+let cryptoExpanded = false;
+
+
+/* =====================================
+   PAGE LOAD
+===================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        loadCrypto();
+
+        loadStocks();
+
+        renderWatchlist();
+
+        updateLastUpdated();
+
+        setInterval(
+            refreshMarketData,
+            60000
+        );
+
+    }
+);
+
+
+/* =====================================
+   REFRESH DATA
+===================================== */
+
+function refreshMarketData() {
+
+    loadCrypto();
+
+    loadStocks();
+
+    updateLastUpdated();
+
+}
+
+
+/* =====================================
+   LOAD CRYPTO
+===================================== */
 
 async function loadCrypto() {
+
+    const container =
+        document.getElementById("crypto");
 
     try {
 
@@ -17,190 +76,213 @@ async function loadCrypto() {
         if (!response.ok) {
 
             throw new Error(
-                "Crypto API request failed"
+                "Crypto API error"
             );
 
         }
 
-        const data =
+        cryptoData =
             await response.json();
 
-        console.log(
-            "Crypto data:",
-            data
-        );
+        displayCrypto();
 
-        displayCrypto(data);
+        updateDashboardSummary();
 
-    } catch (error) {
+        loadMarketChart();
 
-        console.error(
-            "Crypto API error:",
-            error
-        );
+        loadTopMovers();
 
-        const cryptoContainer =
-            document.getElementById("crypto");
+        loadMarketKPIs();
 
-        if (cryptoContainer) {
+        renderWatchlist();
 
-            cryptoContainer.innerHTML =
-                "<p>Unable to load cryptocurrency data.</p>";
+    }
 
-        }
+    catch (error) {
+
+        console.error(error);
+
+        container.innerHTML = `
+            <p class="loading">
+                Unable to load cryptocurrency data.
+            </p>
+        `;
 
     }
 
 }
 
 
-// ==========================================
-// DISPLAY CRYPTO
-// ==========================================
+/* =====================================
+   DISPLAY CRYPTO
+===================================== */
 
-function displayCrypto(coins) {
+function displayCrypto() {
 
-    const cryptoContainer =
+    const container =
         document.getElementById("crypto");
 
-    if (!cryptoContainer) {
+    container.innerHTML = "";
+
+    if (
+        !Array.isArray(cryptoData)
+        ||
+        cryptoData.length === 0
+    ) {
+
+        container.innerHTML = `
+            <p class="loading">
+                No cryptocurrency data available.
+            </p>
+        `;
+
         return;
     }
 
-    cryptoContainer.innerHTML = "";
 
-    coins.forEach(coin => {
+    cryptoData.forEach(
+        (coin, index) => {
 
-        // Show only first 3 cryptocurrencies initially
+            const change =
+                Number(
+                    coin.price_change_percentage_24h
+                    || 0
+                );
 
-const cryptoCards =
-    document.querySelectorAll(
-        "#crypto .market-card"
-    );
+            const card =
+                document.createElement("div");
 
-cryptoCards.forEach(
-    (card, index) => {
+            card.className =
+                "market-card";
 
-        if (index >= 3) {
-            card.style.display = "none";
-        }
+            if (index >= 3) {
 
-    }
-);
+                card.classList.add(
+                    "hidden-card"
+                );
 
-        const card =
-            document.createElement("div");
+            }
 
-        card.className =
-            "market-card";
 
-        const change =
-            coin.price_change_percentage_24h || 0;
+            card.onclick = function () {
 
-        const changeClass =
-            change >= 0
-                ? "positive"
-                : "negative";
+                showAssetDetails(
+                    coin,
+                    "crypto"
+                );
 
-        const changeSymbol =
-            change >= 0
-                ? "+"
-                : "";
+            };
 
-        const symbol =
-            coin.symbol.toUpperCase();
 
-        card.innerHTML = `
+            card.innerHTML = `
 
-            <div class="asset-header">
+                <div class="card-top">
 
-                <div>
+                    <div class="asset-name">
 
-                    <h3>
-                        ${coin.name}
-                    </h3>
+                        <h3>
+                            ${escapeHTML(
+                                coin.name
+                            )}
+                        </h3>
 
-                    <span>
-                        ${symbol}
-                    </span>
+                        <p>
+                            ${coin.symbol
+                                .toUpperCase()}
+                        </p>
+
+                    </div>
 
                 </div>
 
-                <span class="${changeClass}">
-                    ${changeSymbol}${change.toFixed(2)}%
-                </span>
 
-            </div>
+                <div class="asset-price">
 
+                    $${formatNumber(
+                        coin.current_price
+                    )}
 
-            <div class="price">
-
-                $${Number(
-                    coin.current_price
-                ).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}
-
-            </div>
+                </div>
 
 
-            <div class="asset-info">
+                <div class="price-change
+                    ${change >= 0
+                        ? "positive"
+                        : "negative"}">
 
-                <span>
+                    ${change >= 0
+                        ? "+"
+                        : ""}${change.toFixed(2)}%
 
-                    Market Cap:
-                    $${Number(
-                        coin.market_cap
-                    ).toLocaleString("en-US")}
-
-                </span>
-
-                <span>
-
-                    Volume:
-                    $${Number(
-                        coin.total_volume
-                    ).toLocaleString("en-US")}
-
-                </span>
-
-            </div>
+                </div>
 
 
-            <button
-                class="watchlist-btn"
-                onclick="addToWatchlist(
-                    '${symbol}',
-                    '${coin.name}',
-                    'Cryptocurrency'
-                )">
+                <div class="card-stats">
 
-                ⭐ Add to Watchlist
+                    <div class="stat-box">
 
-            </button>
+                        <span>
+                            Market Cap
+                        </span>
 
-        `;
+                        <strong>
+                            ${formatMarketCap(
+                                coin.market_cap
+                            )}
+                        </strong>
 
-        cryptoContainer.appendChild(card);
+                    </div>
 
-    });
+
+                    <div class="stat-box">
+
+                        <span>
+                            Rank
+                        </span>
+
+                        <strong>
+                            #${coin.market_cap_rank || "-"}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="watchlist-btn"
+                    onclick="event.stopPropagation();
+                    addToWatchlist(
+                        '${escapeJS(
+                            coin.id
+                        )}',
+                        'crypto'
+                    )"
+                >
+
+                    ★ Add to Watchlist
+
+                </button>
+
+            `;
+
+
+            container.appendChild(card);
+
+        }
+    );
 
 }
 
 
-// ==========================================
-// LOAD CRYPTO DATA
-// ==========================================
-
-loadCrypto();
-
-
-// ==========================================
-// STOCK MARKET
-// ==========================================
+/* =====================================
+   LOAD STOCKS
+===================================== */
 
 async function loadStocks() {
+
+    const container =
+        document.getElementById("stocks");
 
     try {
 
@@ -210,283 +292,289 @@ async function loadStocks() {
         if (!response.ok) {
 
             throw new Error(
-                "Stock API request failed"
+                "Stock API error"
             );
 
         }
 
-        const stocks =
+        stockData =
             await response.json();
 
-        console.log(
-            "Stock data:",
-            stocks
-        );
+        displayStocks();
 
-        displayStocks(stocks);
+        updateDashboardSummary();
 
-    } catch (error) {
+        loadTopMovers();
 
-        console.error(
-            "Stock error:",
-            error
-        );
+        loadMarketKPIs();
 
-        const stockContainer =
-            document.getElementById("stocks");
+        renderWatchlist();
 
-        if (stockContainer) {
+    }
 
-            stockContainer.innerHTML =
-                "<p>Unable to load stock data.</p>";
+    catch (error) {
 
-        }
+        console.error(error);
+
+        container.innerHTML = `
+            <p class="loading">
+                Unable to load stock data.
+            </p>
+        `;
 
     }
 
 }
 
 
-// ==========================================
-// DISPLAY STOCKS
-// ==========================================
+/* =====================================
+   DISPLAY STOCKS
+===================================== */
 
-function displayStocks(stocks) {
+function displayStocks() {
 
-    const stockContainer =
+    const container =
         document.getElementById("stocks");
 
-    if (!stockContainer) {
+    container.innerHTML = "";
+
+    if (
+        !Array.isArray(stockData)
+        ||
+        stockData.length === 0
+    ) {
+
+        container.innerHTML = `
+            <p class="loading">
+                No stock data available.
+            </p>
+        `;
+
         return;
     }
 
-    stockContainer.innerHTML = "";
 
-    stocks.forEach(stock => {
+    stockData.forEach(
+        (stock, index) => {
 
-        const card =
-            document.createElement("div");
+            const change =
+                Number(
+                    stock.change || 0
+                );
 
-        card.className =
-            "market-card";
+            const card =
+                document.createElement("div");
 
-        const changeClass =
-            stock.change >= 0
-                ? "positive"
-                : "negative";
+            card.className =
+                "market-card";
 
-        const changeSymbol =
-            stock.change >= 0
-                ? "+"
-                : "";
 
-        card.innerHTML = `
+            if (
+                index >= 3
+                &&
+                !stocksExpanded
+            ) {
 
-            <div class="asset-header">
+                card.classList.add(
+                    "hidden-card"
+                );
 
-                <div>
+            }
 
-                    <h3>
-                        ${stock.symbol}
-                    </h3>
 
-                    <span>
-                        ${stock.name}
-                    </span>
+            card.onclick = function () {
+
+                showAssetDetails(
+                    stock,
+                    "stock"
+                );
+
+            };
+
+
+            card.innerHTML = `
+
+                <div class="card-top">
+
+                    <div class="asset-name">
+
+                        <h3>
+                            ${escapeHTML(
+                                stock.name
+                            )}
+                        </h3>
+
+                        <p>
+                            ${escapeHTML(
+                                stock.symbol
+                            )}
+                        </p>
+
+                    </div>
 
                 </div>
 
-                <span class="${changeClass}">
 
-                    ${changeSymbol}${stock.change.toFixed(2)}%
+                <div class="asset-price">
 
-                </span>
+                    ₹${formatNumber(
+                        stock.price
+                    )}
 
-            </div>
-
-
-            <div class="price">
-
-                ₹${stock.price.toLocaleString("en-IN")}
-
-            </div>
+                </div>
 
 
-            <div class="asset-info">
+                <div class="price-change
+                    ${change >= 0
+                        ? "positive"
+                        : "negative"}">
 
-                <span>
+                    ${change >= 0
+                        ? "+"
+                        : ""}${change.toFixed(2)}%
 
-                    High:
-                    ₹${stock.high.toLocaleString("en-IN")}
-
-                </span>
-
-                <span>
-
-                    Low:
-                    ₹${stock.low.toLocaleString("en-IN")}
-
-                </span>
-
-            </div>
+                </div>
 
 
-            <button
-                class="watchlist-btn"
-                onclick="addToWatchlist(
-                    '${stock.symbol}',
-                    '${stock.name}',
-                    'Stock'
-                )">
+                <div class="card-stats">
 
-                ⭐ Add to Watchlist
+                    <div class="stat-box">
 
-            </button>
+                        <span>
+                            Day High
+                        </span>
 
-        `;
+                        <strong>
+                            ₹${formatNumber(
+                                stock.high
+                            )}
+                        </strong>
 
-        stockContainer.appendChild(card);
+                    </div>
 
-    });
+
+                    <div class="stat-box">
+
+                        <span>
+                            Day Low
+                        </span>
+
+                        <strong>
+                            ₹${formatNumber(
+                                stock.low
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="watchlist-btn"
+                    onclick="event.stopPropagation();
+                    addToWatchlist(
+                        '${escapeJS(
+                            stock.symbol
+                        )}',
+                        'stock'
+                    )"
+                >
+
+                    ★ Add to Watchlist
+
+                </button>
+
+            `;
+
+
+            container.appendChild(card);
+
+        }
+    );
+
+
+    updateViewButtons();
 
 }
 
 
-// ==========================================
-// LOAD STOCK DATA
-// ==========================================
-
-loadStocks();
-
-
-// ==========================================
-// SEARCH ASSETS
-// ==========================================
+/* =====================================
+   SEARCH
+===================================== */
 
 function searchAsset() {
 
-    const searchInput =
-        document.getElementById("searchInput");
+    const input =
+        document.getElementById(
+            "searchInput"
+        );
 
-    if (!searchInput) {
-        return;
-    }
-
-    const searchTerm =
-        searchInput.value
+    const query =
+        input.value
             .trim()
             .toLowerCase();
 
-    if (searchTerm === "") {
+
+    if (!query) {
 
         alert(
             "Please enter a stock or cryptocurrency name."
         );
 
         return;
+
     }
 
 
-    // ======================================
-    // SEARCH STOCKS
-    // ======================================
-
-    const stockCards =
+    const allCards =
         document.querySelectorAll(
-            "#stocks .market-card"
+            ".market-card"
         );
 
-
-    // ======================================
-    // SEARCH CRYPTO
-    // ======================================
-
-    const cryptoCards =
-        document.querySelectorAll(
-            "#crypto .market-card"
-        );
 
     let found = false;
 
 
-    // ======================================
-    // CHECK STOCK CARDS
-    // ======================================
+    allCards.forEach(
+        card => {
 
-    stockCards.forEach(card => {
+            card.classList.remove(
+                "selected"
+            );
 
-        const cardText =
-            card.innerText.toLowerCase();
-
-        if (
-            cardText.includes(searchTerm)
-        ) {
-
-            card.style.display =
-                "block";
-
-            card.style.border =
-                "3px solid #2563eb";
-
-            card.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-            found = true;
-
-        } else {
-
-            card.style.border = "";
-
-        }
-
-    });
+            const text =
+                card.innerText
+                    .toLowerCase();
 
 
-    // ======================================
-    // CHECK CRYPTO CARDS
-    // ======================================
+            if (
+                !found
+                &&
+                text.includes(query)
+            ) {
 
-    cryptoCards.forEach(card => {
+                card.classList.add(
+                    "selected"
+                );
 
-        const cardText =
-            card.innerText.toLowerCase();
+                card.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
 
-        if (
-            cardText.includes(searchTerm)
-        ) {
+                found = true;
 
-            card.style.display =
-                "block";
-
-            card.style.border =
-                "3px solid #2563eb";
-
-            card.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-            found = true;
-
-        } else {
-
-            card.style.border = "";
+            }
 
         }
+    );
 
-    });
-
-
-    // ======================================
-    // NO RESULT
-    // ======================================
 
     if (!found) {
 
         alert(
-            `No market asset found for "${searchInput.value}".`
+            "Asset not found. Try another name or symbol."
         );
 
     }
@@ -494,749 +582,817 @@ function searchAsset() {
 }
 
 
-// ==========================================
-// SEARCH WITH ENTER KEY
-// ==========================================
+document
+    .getElementById("searchInput")
+    .addEventListener(
+        "keydown",
+        function (event) {
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+            if (
+                event.key === "Enter"
+            ) {
 
-        const searchInput =
-            document.getElementById(
-                "searchInput"
-            );
+                searchAsset();
 
-        if (searchInput) {
-
-            searchInput.addEventListener(
-                "keydown",
-                function (event) {
-
-                    if (event.key === "Enter") {
-
-                        searchAsset();
-
-                    }
-
-                }
-            );
+            }
 
         }
-
-    }
-);
-
-
-// ==========================================
-// WATCHLIST SYSTEM
-// ==========================================
-
-let watchlist =
-    JSON.parse(
-        localStorage.getItem(
-            "marketPulseWatchlist"
-        )
-    ) || [];
-
-
-// ==========================================
-// SAVE WATCHLIST
-// ==========================================
-
-function saveWatchlist() {
-
-    localStorage.setItem(
-        "marketPulseWatchlist",
-        JSON.stringify(watchlist)
     );
 
-}
 
+/* =====================================
+   ASSET DETAILS
+===================================== */
 
-// ==========================================
-// ADD ASSET TO WATCHLIST
-// ==========================================
-
-function addToWatchlist(
-    symbol,
-    name,
+function showAssetDetails(
+    asset,
     type
 ) {
 
-    const alreadyExists =
-        watchlist.some(
-            asset =>
-                asset.symbol === symbol
+    const title =
+        document.getElementById(
+            "detailTitle"
         );
 
-    if (alreadyExists) {
-
-        alert(
-            symbol +
-            " is already in your watchlist."
+    const subtitle =
+        document.getElementById(
+            "detailSubtitle"
         );
 
-        return;
+    const price =
+        document.getElementById(
+            "detailPrice"
+        );
+
+    const change =
+        document.getElementById(
+            "detailChange"
+        );
+
+    const high =
+        document.getElementById(
+            "detailHigh"
+        );
+
+    const low =
+        document.getElementById(
+            "detailLow"
+        );
+
+    const analysis =
+        document.getElementById(
+            "detailAnalysis"
+        );
+
+
+    let currentPrice;
+
+    let changeValue;
+
+    let highValue;
+
+    let lowValue;
+
+    let name;
+
+    let symbol;
+
+
+    if (type === "crypto") {
+
+        currentPrice =
+            Number(
+                asset.current_price || 0
+            );
+
+        changeValue =
+            Number(
+                asset.price_change_percentage_24h
+                || 0
+            );
+
+        highValue =
+            Number(
+                asset.high_24h || 0
+            );
+
+        lowValue =
+            Number(
+                asset.low_24h || 0
+            );
+
+        name =
+            asset.name;
+
+        symbol =
+            asset.symbol.toUpperCase();
+
+        price.innerText =
+            "$" +
+            formatNumber(
+                currentPrice
+            );
+
+        high.innerText =
+            "$" +
+            formatNumber(
+                highValue
+            );
+
+        low.innerText =
+            "$" +
+            formatNumber(
+                lowValue
+            );
+
     }
 
-    watchlist.push({
+    else {
 
-        symbol: symbol,
+        currentPrice =
+            Number(
+                asset.price || 0
+            );
 
-        name: name,
+        changeValue =
+            Number(
+                asset.change || 0
+            );
 
-        type: type
+        highValue =
+            Number(
+                asset.high || 0
+            );
 
-    });
+        lowValue =
+            Number(
+                asset.low || 0
+            );
 
-    saveWatchlist();
+        name =
+            asset.name;
 
-    renderWatchlist();
+        symbol =
+            asset.symbol;
 
-    alert(
+        price.innerText =
+            "₹" +
+            formatNumber(
+                currentPrice
+            );
+
+        high.innerText =
+            "₹" +
+            formatNumber(
+                highValue
+            );
+
+        low.innerText =
+            "₹" +
+            formatNumber(
+                lowValue
+            );
+
+    }
+
+
+    title.innerText =
+        name;
+
+
+    subtitle.innerText =
         symbol +
-        " added to your watchlist!"
+        " • " +
+        (
+            type === "crypto"
+                ? "Cryptocurrency"
+                : "Indian Stock"
+        );
+
+
+    change.innerText =
+        (
+            changeValue >= 0
+                ? "+"
+                : ""
+        ) +
+        changeValue.toFixed(2) +
+        "%";
+
+
+    change.className =
+        changeValue >= 0
+            ? "positive"
+            : "negative";
+
+
+    let message;
+
+
+    if (changeValue > 3) {
+
+        message =
+            `${name} is showing strong positive momentum today. ` +
+            `The asset has gained ${changeValue.toFixed(2)}%. ` +
+            `This indicates strong short-term buying activity, ` +
+            `although investors should consider volatility and ` +
+            `market conditions before making decisions.`;
+
+    }
+
+    else if (changeValue > 0) {
+
+        message =
+            `${name} is currently trading positively with a ` +
+            `${changeValue.toFixed(2)}% gain. ` +
+            `The short-term trend is positive, but further ` +
+            `market confirmation is recommended.`;
+
+    }
+
+    else if (changeValue < -3) {
+
+        message =
+            `${name} is experiencing significant negative ` +
+            `movement of ${changeValue.toFixed(2)}%. ` +
+            `This suggests short-term selling pressure. ` +
+            `Investors should evaluate risk and market conditions ` +
+            `before making investment decisions.`;
+
+    }
+
+    else if (changeValue < 0) {
+
+        message =
+            `${name} is currently trading lower by ` +
+            `${Math.abs(changeValue).toFixed(2)}%. ` +
+            `The asset is showing mild short-term weakness.`;
+
+    }
+
+    else {
+
+        message =
+            `${name} is currently showing relatively stable ` +
+            `price movement. Monitor future market activity ` +
+            `for a clearer trend.`;
+
+    }
+
+
+    analysis.innerText =
+        message;
+
+
+    document
+        .getElementById(
+            "assetDetails"
+        )
+        .scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+}
+
+
+/* =====================================
+   WATCHLIST
+===================================== */
+
+function getWatchlist() {
+
+    try {
+
+        return JSON.parse(
+            localStorage.getItem(
+                "marketPulseWatchlist"
+            )
+        ) || [];
+
+    }
+
+    catch {
+
+        return [];
+
+    }
+
+}
+
+
+function saveWatchlist(
+    list
+) {
+
+    localStorage.setItem(
+        "marketPulseWatchlist",
+        JSON.stringify(list)
     );
 
 }
 
 
-// ==========================================
-// REMOVE ASSET FROM WATCHLIST
-// ==========================================
+function addToWatchlist(
+    identifier,
+    type
+) {
 
-function removeFromWatchlist(symbol) {
+    const list =
+        getWatchlist();
 
-    watchlist =
-        watchlist.filter(
-            asset =>
-                asset.symbol !== symbol
+
+    const exists =
+        list.some(
+            item =>
+                item.identifier === identifier
+                &&
+                item.type === type
         );
 
-    saveWatchlist();
+
+    if (exists) {
+
+        alert(
+            "This asset is already in your watchlist."
+        );
+
+        return;
+
+    }
+
+
+    list.push({
+
+        identifier:
+            identifier,
+
+        type:
+            type
+
+    });
+
+
+    saveWatchlist(list);
+
+    renderWatchlist();
+
+
+    alert(
+        "Added to your watchlist!"
+    );
+
+}
+
+
+function removeFromWatchlist(
+    identifier,
+    type
+) {
+
+    let list =
+        getWatchlist();
+
+
+    list =
+        list.filter(
+            item =>
+                !(
+                    item.identifier === identifier
+                    &&
+                    item.type === type
+                )
+        );
+
+
+    saveWatchlist(list);
 
     renderWatchlist();
 
 }
 
 
-// ==========================================
-// DISPLAY WATCHLIST
-// ==========================================
+function renderWatchlist() {
 
-async function renderWatchlist() {
-
-    const watchlistContainer =
+    const container =
         document.getElementById(
-            "watchlist"
+            "watchlistContainer"
         );
 
-    if (!watchlistContainer) {
+
+    if (!container) {
         return;
     }
 
 
-    if (watchlist.length === 0) {
+    const list =
+        getWatchlist();
 
-        watchlistContainer.innerHTML = `
 
-            <div class="section-header">
+    if (list.length === 0) {
 
-                <div>
-
-                    <h2>
-                        ⭐ My Watchlist
-                    </h2>
-
-                    <p>
-                        Assets you want to monitor
-                    </p>
-
-                </div>
-
-            </div>
-
-            <div class="empty-watchlist">
-
-                <div class="watch-icon">
-                    ⭐
-                </div>
-
-                <h3>
-                    Your watchlist is empty
-                </h3>
-
-                <p>
-                    Add a stock or cryptocurrency
-                    using the Watchlist button.
-                </p>
-
-            </div>
-
+        container.innerHTML = `
+            <p class="empty-watchlist">
+                Your watchlist is empty.
+                Add assets using the
+                "Add to Watchlist" button.
+            </p>
         `;
 
         return;
-    }
-
-
-    watchlistContainer.innerHTML = `
-
-        <div class="section-header">
-
-            <div>
-
-                <h2>
-                    ⭐ My Watchlist
-                </h2>
-
-                <p>
-                    Assets you want to monitor
-                </p>
-
-            </div>
-
-        </div>
-
-        <p class="watchlist-empty">
-            Loading watchlist data...
-        </p>
-
-    `;
-
-
-    let stocks = [];
-
-    let crypto = [];
-
-
-    // ======================================
-    // GET STOCK DATA
-    // ======================================
-
-    try {
-
-        const stockResponse =
-            await fetch("/api/stocks");
-
-        if (stockResponse.ok) {
-
-            stocks =
-                await stockResponse.json();
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Watchlist stock error:",
-            error
-        );
 
     }
 
 
-    // ======================================
-    // GET CRYPTO DATA
-    // ======================================
-
-    try {
-
-        const cryptoResponse =
-            await fetch("/api/crypto");
-
-        if (cryptoResponse.ok) {
-
-            crypto =
-                await cryptoResponse.json();
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Watchlist crypto error:",
-            error
-        );
-
-    }
+    container.innerHTML = "";
 
 
-    watchlistContainer.innerHTML = `
+    list.forEach(
+        item => {
 
-        <div class="section-header">
-
-            <div>
-
-                <h2>
-                    ⭐ My Watchlist
-                </h2>
-
-                <p>
-                    Assets you want to monitor
-                </p>
-
-            </div>
-
-        </div>
-
-    `;
+            let asset = null;
 
 
-    const watchlistGrid =
-        document.createElement("div");
+            if (
+                item.type === "crypto"
+            ) {
 
-    watchlistGrid.className =
-        "watchlist-grid";
-
-
-    // ======================================
-    // CREATE WATCHLIST CARDS
-    // ======================================
-
-    watchlist.forEach(asset => {
-
-        let price = null;
-
-        let change = null;
-
-
-        // ==================================
-        // STOCK DATA
-        // ==================================
-
-        if (asset.type === "Stock") {
-
-            const stock =
-                stocks.find(
-                    item =>
-                        item.symbol ===
-                        asset.symbol
-                );
-
-            if (stock) {
-
-                price =
-                    `₹${Number(
-                        stock.price
-                    ).toLocaleString(
-                        "en-IN"
-                    )}`;
-
-                change =
-                    stock.change;
+                asset =
+                    cryptoData.find(
+                        coin =>
+                            coin.id ===
+                            item.identifier
+                    );
 
             }
 
-        }
+            else {
 
-
-        // ==================================
-        // CRYPTO DATA
-        // ==================================
-
-        if (
-            asset.type ===
-            "Cryptocurrency"
-        ) {
-
-            const coin =
-                crypto.find(
-                    item =>
-                        item.symbol.toUpperCase() ===
-                        asset.symbol
-                );
-
-            if (coin) {
-
-                price =
-                    `$${Number(
-                        coin.current_price
-                    ).toLocaleString(
-                        "en-US",
-                        {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }
-                    )}`;
-
-                change =
-                    coin.price_change_percentage_24h ||
-                    0;
+                asset =
+                    stockData.find(
+                        stock =>
+                            stock.symbol ===
+                            item.identifier
+                    );
 
             }
 
-        }
+
+            if (!asset) {
+
+                const div =
+                    document.createElement(
+                        "div"
+                    );
+
+                div.className =
+                    "watchlist-item";
+
+                div.innerHTML = `
+
+                    <h3>
+                        ${escapeHTML(
+                            item.identifier
+                        )}
+                    </h3>
+
+                    <p>
+                        Waiting for market data...
+                    </p>
+
+                    <button
+                        class="remove-watchlist"
+                        onclick="removeFromWatchlist(
+                            '${escapeJS(
+                                item.identifier
+                            )}',
+                            '${escapeJS(
+                                item.type
+                            )}'
+                        )"
+                    >
+                        Remove
+                    </button>
+
+                `;
+
+                container.appendChild(div);
+
+                return;
+
+            }
 
 
-        // ==================================
-        // CHANGE DISPLAY
-        // ==================================
+            const div =
+                document.createElement(
+                    "div"
+                );
 
-        let changeHTML =
-            `<span>Data unavailable</span>`;
+            div.className =
+                "watchlist-item";
 
 
-        if (change !== null) {
+            let currentPrice;
 
-            const changeClass =
-                change >= 0
-                    ? "positive"
-                    : "negative";
+            let change;
 
-            const changeSymbol =
-                change >= 0
-                    ? "+"
-                    : "";
+            let name;
 
-            changeHTML = `
 
-                <span class="${changeClass}">
+            if (
+                item.type === "crypto"
+            ) {
 
-                    ${changeSymbol}${Number(
-                        change
-                    ).toFixed(2)}%
+                currentPrice =
+                    "$" +
+                    formatNumber(
+                        asset.current_price
+                    );
 
-                </span>
+                change =
+                    Number(
+                        asset.price_change_percentage_24h
+                        || 0
+                    );
+
+                name =
+                    asset.name;
+
+            }
+
+            else {
+
+                currentPrice =
+                    "₹" +
+                    formatNumber(
+                        asset.price
+                    );
+
+                change =
+                    Number(
+                        asset.change || 0
+                    );
+
+                name =
+                    asset.name;
+
+            }
+
+
+            div.innerHTML = `
+
+                <h3>
+                    ${escapeHTML(name)}
+                </h3>
+
+                <p>
+                    ${currentPrice}
+                </p>
+
+                <strong
+                    class="${
+                        change >= 0
+                            ? "positive"
+                            : "negative"
+                    }"
+                >
+                    ${
+                        change >= 0
+                            ? "+"
+                            : ""
+                    }${change.toFixed(2)}%
+                </strong>
+
+                <button
+                    class="remove-watchlist"
+                    onclick="removeFromWatchlist(
+                        '${escapeJS(
+                            item.identifier
+                        )}',
+                        '${escapeJS(
+                            item.type
+                        )}'
+                    )"
+                >
+                    Remove
+                </button>
 
             `;
 
+
+            container.appendChild(div);
+
         }
-
-
-        // ==================================
-        // CREATE CARD
-        // ==================================
-
-        const card =
-            document.createElement("div");
-
-        card.className =
-            "watchlist-card";
-
-
-        card.innerHTML = `
-
-            <div class="watchlist-info">
-
-                <h3>
-                    ${asset.symbol}
-                </h3>
-
-                <p>
-                    ${asset.name}
-                </p>
-
-                <small>
-                    ${asset.type}
-                </small>
-
-            </div>
-
-
-            <div class="watchlist-market">
-
-                <strong>
-                    ${price || "Data unavailable"}
-                </strong>
-
-                ${changeHTML}
-
-            </div>
-
-
-            <div class="watchlist-actions">
-
-                <button
-                    onclick="removeFromWatchlist('${asset.symbol}')"
-                    class="remove-watchlist">
-
-                    Remove
-
-                </button>
-
-            </div>
-
-        `;
-
-
-        watchlistGrid.appendChild(card);
-
-    });
-
-
-    watchlistContainer.appendChild(
-        watchlistGrid
     );
 
 }
 
 
-// ==========================================
-// INITIALIZE WATCHLIST
-// ==========================================
+/* =====================================
+   DASHBOARD SUMMARY
+===================================== */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+function updateDashboardSummary() {
 
-        renderWatchlist();
+    if (
+        !cryptoData.length
+        &&
+        !stockData.length
+    ) {
+
+        return;
 
     }
-);
 
 
-// ==========================================
-// AUTOMATIC MARKET DATA REFRESH
-// ==========================================
+    const prices =
+        cryptoData
+            .map(
+                coin =>
+                    Number(
+                        coin.current_price
+                    )
+            )
+            .filter(
+                Number.isFinite
+            );
 
-setInterval(
-    function () {
 
-        console.log(
-            "Refreshing MarketPulse data..."
+    if (prices.length > 0) {
+
+        const average =
+            prices.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) / prices.length;
+
+
+        document.getElementById(
+            "averagePrice"
+        ).innerText =
+            "$" +
+            formatNumber(
+                average
+            );
+
+    }
+
+
+    const totalMarketCap =
+        cryptoData
+            .reduce(
+                (
+                    total,
+                    coin
+                ) =>
+                    total +
+                    Number(
+                        coin.market_cap || 0
+                    ),
+                0
+            );
+
+
+    document.getElementById(
+        "totalMarketCap"
+    ).innerText =
+        formatMarketCap(
+            totalMarketCap
         );
 
-        location.reload();
 
-    },
-    60000
-);
+    const allMovers = [
 
-
-// ==========================================
-// DASHBOARD KPI SUMMARY
-// ==========================================
-
-async function updateDashboardSummary() {
-
-    try {
-
-        const stockResponse =
-            await fetch("/api/stocks");
-
-        const stocks =
-            await stockResponse.json();
-
-
-        const cryptoResponse =
-            await fetch("/api/crypto");
-
-        const crypto =
-            await cryptoResponse.json();
-
-
-        const assets = [];
-
-
-        // ======================================
-        // ADD STOCKS
-        // ======================================
-
-        stocks.forEach(stock => {
-
-            assets.push({
-
-                symbol:
-                    stock.symbol,
-
-                name:
-                    stock.name,
-
-                change:
-                    Number(
-                        stock.change
-                    ),
-
-                type:
-                    "Stock"
-
-            });
-
-        });
-
-
-        // ======================================
-        // ADD CRYPTO
-        // ======================================
-
-        crypto.forEach(coin => {
-
-            assets.push({
-
-                symbol:
-                    coin.symbol.toUpperCase(),
+        ...cryptoData.map(
+            coin => ({
 
                 name:
                     coin.name,
 
                 change:
                     Number(
-                        coin.price_change_percentage_24h ||
-                        0
-                    ),
+                        coin.price_change_percentage_24h
+                        || 0
+                    )
 
-                type:
-                    "Cryptocurrency"
+            })
+        ),
 
-            });
+        ...stockData.map(
+            stock => ({
 
-        });
+                name:
+                    stock.name,
 
+                change:
+                    Number(
+                        stock.change || 0
+                    )
 
-        // ======================================
-        // TOTAL ASSETS
-        // ======================================
+            })
+        )
 
-        const totalAssets =
-            document.getElementById(
-                "totalAssets"
-            );
-
-        if (totalAssets) {
-
-            totalAssets.textContent =
-                assets.length;
-
-        }
+    ];
 
 
-        // ======================================
-        // TOP GAINER
-        // ======================================
+    if (allMovers.length > 0) {
 
-        const topGainer =
-            document.getElementById(
-                "topGainer"
-            );
-
-        if (
-            topGainer &&
-            assets.length > 0
-        ) {
-
-            const gainer =
-                [...assets].sort(
-                    (a, b) =>
+        const best =
+            [...allMovers]
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
                         b.change -
                         a.change
                 )[0];
 
-            topGainer.textContent =
-                `${gainer.symbol} +${gainer.change.toFixed(2)}%`;
 
-        }
-
-
-        // ======================================
-        // TOP LOSER
-        // ======================================
-
-        const topLoser =
-            document.getElementById(
-                "topLoser"
-            );
-
-        if (
-            topLoser &&
-            assets.length > 0
-        ) {
-
-            const loser =
-                [...assets].sort(
-                    (a, b) =>
+        const worst =
+            [...allMovers]
+                .sort(
+                    (
+                        a,
+                        b
+                    ) =>
                         a.change -
                         b.change
                 )[0];
 
-            topLoser.textContent =
-                `${loser.symbol} ${loser.change.toFixed(2)}%`;
 
-        }
-
-
-        // ======================================
-        // WATCHLIST COUNT
-        // ======================================
-
-        const watchlistCount =
-            document.getElementById(
-                "watchlistCount"
-            );
-
-        if (watchlistCount) {
-
-            watchlistCount.textContent =
-                watchlist.length;
-
-        }
+        document.getElementById(
+            "bestPerformer"
+        ).innerText =
+            best.name;
 
 
-        console.log(
-            "Dashboard summary updated."
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Dashboard summary error:",
-            error
-        );
+        document.getElementById(
+            "worstPerformer"
+        ).innerText =
+            worst.name;
 
     }
 
 }
 
 
-// ==========================================
-// MARKET PERFORMANCE CHART
-// ==========================================
+/* =====================================
+   MARKET CHART
+===================================== */
 
-async function loadMarketChart() {
+function loadMarketChart() {
 
-    try {
-
-        const response =
-            await fetch("/api/crypto");
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Crypto API request failed"
-            );
-
-        }
-
-        const crypto =
-            await response.json();
-
-        const chartCanvas =
-            document.getElementById(
-                "marketChart"
-            );
-
-        if (!chartCanvas) {
-            return;
-        }
+    const canvas =
+        document.getElementById(
+            "marketChart"
+        );
 
 
-        const labels =
-            crypto.map(
+    if (
+        !canvas
+        ||
+        !cryptoData.length
+    ) {
+
+        return;
+
+    }
+
+
+    const labels =
+        cryptoData
+            .slice(0, 8)
+            .map(
                 coin =>
-                    coin.name
+                    coin.symbol
+                        .toUpperCase()
             );
 
 
-        const prices =
-            crypto.map(
+    const changes =
+        cryptoData
+            .slice(0, 8)
+            .map(
                 coin =>
-                    coin.current_price
+                    Number(
+                        coin.price_change_percentage_24h
+                        || 0
+                    )
             );
 
 
+    if (marketChart) {
+
+        marketChart.destroy();
+
+    }
+
+
+    marketChart =
         new Chart(
-            chartCanvas,
+            canvas,
             {
 
                 type: "bar",
@@ -1245,62 +1401,48 @@ async function loadMarketChart() {
 
                     labels: labels,
 
-                    datasets: [
+                    datasets: [{
 
-                        {
+                        label:
+                            "24h Change (%)",
 
-                            label:
-                                "Current Price (USD)",
+                        data:
+                            changes,
 
-                            data:
-                                prices,
+                        borderWidth: 1
 
-                            borderWidth: 1
-
-                        }
-
-                    ]
+                    }]
 
                 },
-
 
                 options: {
 
                     responsive: true,
 
-                    maintainAspectRatio:
-                        false,
+                    maintainAspectRatio: false,
 
                     plugins: {
 
                         legend: {
 
-                            display:
-                                true
+                            display: true
 
                         }
 
                     },
 
-
                     scales: {
 
                         y: {
 
-                            beginAtZero:
-                                false,
+                            beginAtZero: true,
 
-                            ticks: {
+                            title: {
 
-                                callback:
-                                    function(value) {
+                                display: true,
 
-                                        return "$" +
-                                            Number(
-                                                value
-                                            ).toLocaleString();
-
-                                    }
+                                text:
+                                    "Percentage Change (%)"
 
                             }
 
@@ -1313,112 +1455,134 @@ async function loadMarketChart() {
             }
         );
 
+}
 
-    } catch (error) {
 
-        console.error(
-            "Chart error:",
-            error
-        );
+/* =====================================
+   TOP MOVERS
+===================================== */
 
-    }
+function loadTopMovers() {
+
+    const allAssets = [
+
+        ...cryptoData.map(
+            coin => ({
+
+                name:
+                    coin.name,
+
+                symbol:
+                    coin.symbol
+                        .toUpperCase(),
+
+                price:
+                    Number(
+                        coin.current_price
+                        || 0
+                    ),
+
+                change:
+                    Number(
+                        coin.price_change_percentage_24h
+                        || 0
+                    ),
+
+                currency:
+                    "$"
+
+            })
+        ),
+
+        ...stockData.map(
+            stock => ({
+
+                name:
+                    stock.name,
+
+                symbol:
+                    stock.symbol,
+
+                price:
+                    Number(
+                        stock.price
+                        || 0
+                    ),
+
+                change:
+                    Number(
+                        stock.change
+                        || 0
+                    ),
+
+                currency:
+                    "₹"
+
+            })
+        )
+
+    ];
+
+
+    const sorted =
+        [...allAssets]
+            .sort(
+                (
+                    a,
+                    b
+                ) =>
+                    b.change -
+                    a.change
+            );
+
+
+    const gainers =
+        sorted
+            .filter(
+                item =>
+                    item.change > 0
+            )
+            .slice(0, 5);
+
+
+    const losers =
+        [...sorted]
+            .sort(
+                (
+                    a,
+                    b
+                ) =>
+                    a.change -
+                    b.change
+            )
+            .filter(
+                item =>
+                    item.change < 0
+            )
+            .slice(0, 5);
+
+
+    displayMovers(
+        gainers,
+        "topGainers"
+    );
+
+
+    displayMovers(
+        losers,
+        "topLosers"
+    );
 
 }
 
 
-// ==========================================
-// LOAD MARKET CHART
-// ==========================================
-
-loadMarketChart();
-
-
-// ==========================================
-// TOP GAINERS & LOSERS
-// ==========================================
-
-async function loadTopMovers() {
-
-    try {
-
-        const response =
-            await fetch("/api/crypto");
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Crypto API request failed"
-            );
-
-        }
-
-        const crypto =
-            await response.json();
-
-
-        // Sort highest to lowest
-
-        const sortedCrypto =
-            [...crypto].sort(
-                (a, b) =>
-                    (b.price_change_percentage_24h || 0) -
-                    (a.price_change_percentage_24h || 0)
-            );
-
-
-        // Top 3 gainers
-
-        const gainers =
-            sortedCrypto
-                .filter(
-                    coin =>
-                        (coin.price_change_percentage_24h || 0) > 0
-                )
-                .slice(0, 3);
-
-
-        // Top 3 losers
-
-        const losers =
-            [...sortedCrypto]
-                .filter(
-                    coin =>
-                        (coin.price_change_percentage_24h || 0) < 0
-                )
-                .sort(
-                    (a, b) =>
-                        (a.price_change_percentage_24h || 0) -
-                        (b.price_change_percentage_24h || 0)
-                )
-                .slice(0, 3);
-
-
-        displayMovers(
-            "topGainers",
-            gainers
-        );
-
-        displayMovers(
-            "topLosers",
-            losers
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Top movers error:",
-            error
-        );
-
-    }
-
-}
-
+/* =====================================
+   DISPLAY MOVERS
+===================================== */
 
 function displayMovers(
-    containerId,
-    coins
+    data,
+    containerId
 ) {
 
     const container =
@@ -1426,508 +1590,207 @@ function displayMovers(
             containerId
         );
 
-    if (!container) {
+
+    if (!data.length) {
+
+        container.innerHTML = `
+            <p>
+                No data available.
+            </p>
+        `;
+
         return;
-    }
 
-
-    if (coins.length === 0) {
-
-        container.innerHTML =
-            "<p>No market movement data available.</p>";
-
-        return;
     }
 
 
     container.innerHTML = "";
 
 
-    coins.forEach(coin => {
+    data.forEach(
+        item => {
 
-        const change =
-            coin.price_change_percentage_24h ||
-            0;
+            const div =
+                document.createElement(
+                    "div"
+                );
 
-
-        const changeClass =
-            change >= 0
-                ? "positive"
-                : "negative";
-
-
-        const changeSymbol =
-            change >= 0
-                ? "+"
-                : "";
+            div.className =
+                "movement-item";
 
 
-        const price =
-            Number(
-                coin.current_price
-            ).toLocaleString(
-                "en-US",
-                {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                }
+            div.innerHTML = `
+
+                <div class="movement-info">
+
+                    <h4>
+                        ${escapeHTML(
+                            item.name
+                        )}
+                    </h4>
+
+                    <p>
+                        ${escapeHTML(
+                            item.symbol
+                        )}
+                    </p>
+
+                </div>
+
+
+                <div class="movement-data">
+
+                    <span
+                        class="movement-price"
+                    >
+                        ${item.currency}${formatNumber(
+                            item.price
+                        )}
+                    </span>
+
+                    <span
+                        class="${
+                            item.change >= 0
+                                ? "positive"
+                                : "negative"
+                        }"
+                    >
+                        ${
+                            item.change >= 0
+                                ? "+"
+                                : ""
+                        }${item.change.toFixed(2)}%
+                    </span>
+
+                </div>
+
+            `;
+
+
+            container.appendChild(
+                div
             );
 
-
-        const item =
-            document.createElement("div");
-
-
-        item.className =
-            "movement-item";
-
-
-        item.innerHTML = `
-
-            <div class="movement-info">
-
-                <h4>
-                    ${coin.name}
-                </h4>
-
-                <p>
-                    ${coin.symbol.toUpperCase()}
-                </p>
-
-            </div>
-
-
-            <div class="movement-data">
-
-                <span class="movement-price">
-
-                    $${price}
-
-                </span>
-
-                <span class="${changeClass}">
-
-                    ${changeSymbol}${Number(
-                        change
-                    ).toFixed(2)}%
-
-                </span>
-
-            </div>
-
-        `;
-
-
-        container.appendChild(item);
-
-    });
+        }
+    );
 
 }
 
 
-loadTopMovers();
+/* =====================================
+   MARKET KPI
+===================================== */
 
+function loadMarketKPIs() {
 
-// ==========================================
-// MARKET KPI SUMMARY
-// ==========================================
-
-async function loadMarketKPIs() {
-
-    try {
-
-        const response =
-            await fetch("/api/crypto");
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Crypto API request failed"
-            );
-
-        }
-
-        const crypto =
-            await response.json();
-
-
-        if (
-            !crypto ||
-            crypto.length === 0
-        ) {
-
-            return;
-
-        }
-
-
-        // ======================================
-        // TOTAL MARKET CAP
-        // ======================================
-
-        const totalMarketCap =
-            crypto.reduce(
-                (total, coin) =>
-                    total +
-                    (coin.market_cap || 0),
-                0
-            );
-
-
-        // ======================================
-        // AVERAGE PRICE
-        // ======================================
-
-        const averagePrice =
-            crypto.reduce(
-                (total, coin) =>
-                    total +
-                    (coin.current_price || 0),
-                0
-            ) / crypto.length;
-
-
-        // ======================================
-        // BEST PERFORMER
-        // ======================================
-
-        const bestPerformer =
-            [...crypto].sort(
-                (a, b) =>
-                    (b.price_change_percentage_24h || 0) -
-                    (a.price_change_percentage_24h || 0)
-            )[0];
-
-
-        // ======================================
-        // WORST PERFORMER
-        // ======================================
-
-        const worstPerformer =
-            [...crypto].sort(
-                (a, b) =>
-                    (a.price_change_percentage_24h || 0) -
-                    (b.price_change_percentage_24h || 0)
-            )[0];
-
-
-        // ======================================
-        // DISPLAY TOTAL MARKET CAP
-        // ======================================
-
-        const totalMarketCapElement =
-            document.getElementById(
-                "totalMarketCap"
-            );
-
-        if (totalMarketCapElement) {
-
-            totalMarketCapElement.textContent =
-                "$" +
-                totalMarketCap.toLocaleString(
-                    "en-US",
-                    {
-                        maximumFractionDigits: 0
-                    }
-                );
-
-        }
-
-
-        // ======================================
-        // DISPLAY AVERAGE PRICE
-        // ======================================
-
-        const averagePriceElement =
-            document.getElementById(
-                "averagePrice"
-            );
-
-        if (averagePriceElement) {
-
-            averagePriceElement.textContent =
-                "$" +
-                averagePrice.toLocaleString(
-                    "en-US",
-                    {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }
-                );
-
-        }
-
-
-        // ======================================
-        // DISPLAY BEST PERFORMER
-        // ======================================
-
-        const bestPerformerElement =
-            document.getElementById(
-                "bestPerformer"
-            );
-
-        if (
-            bestPerformerElement &&
-            bestPerformer
-        ) {
-
-            const bestChange =
-                Number(
-                    bestPerformer.price_change_percentage_24h ||
-                    0
-                );
-
-            bestPerformerElement.innerHTML = `
-
-                ${bestPerformer.name}
-
-                <span class="positive">
-
-                    +${bestChange.toFixed(2)}%
-
-                </span>
-
-            `;
-
-        }
-
-
-        // ======================================
-        // DISPLAY WORST PERFORMER
-        // ======================================
-
-        const worstPerformerElement =
-            document.getElementById(
-                "worstPerformer"
-            );
-
-        if (
-            worstPerformerElement &&
-            worstPerformer
-        ) {
-
-            const worstChange =
-                Number(
-                    worstPerformer.price_change_percentage_24h ||
-                    0
-                );
-
-            worstPerformerElement.innerHTML = `
-
-                ${worstPerformer.name}
-
-                <span class="negative">
-
-                    ${worstChange.toFixed(2)}%
-
-                </span>
-
-            `;
-
-        }
-
-
-        console.log(
-            "Market KPI summary updated."
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Market KPI error:",
-            error
-        );
-
-    }
+    updateDashboardSummary();
 
 }
 
 
-// ==========================================
-// LOAD MARKET KPIs
-// ==========================================
+/* =====================================
+   MARKET FILTER
+===================================== */
 
-loadMarketKPIs();
-// ==========================================
-// MARKET FILTER
-// ==========================================
-
-function filterMarket(type, clickedButton) {
-
-    const stockSection =
-        document.getElementById("stocks-section");
-
-    const cryptoSection =
-        document.getElementById("crypto-section");
-
-    if (!stockSection || !cryptoSection) {
-        return;
-    }
-
-
-    // ======================================
-    // SHOW ALL
-    // ======================================
-
-    if (type === "all") {
-
-        stockSection.style.display = "block";
-        cryptoSection.style.display = "block";
-
-    }
-
-
-    // ======================================
-    // SHOW STOCKS ONLY
-    // ======================================
-
-    else if (type === "stocks") {
-
-        stockSection.style.display = "block";
-        cryptoSection.style.display = "none";
-
-        stockSection.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
-    }
-
-
-    // ======================================
-    // SHOW CRYPTO ONLY
-    // ======================================
-
-    else if (type === "crypto") {
-
-        stockSection.style.display = "none";
-        cryptoSection.style.display = "block";
-
-        cryptoSection.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
-    }
-
-
-    // ======================================
-    // UPDATE ACTIVE BUTTON
-    // ======================================
+function filterMarket(
+    type,
+    clickedButton
+) {
 
     const buttons =
         document.querySelectorAll(
             ".filter-btn"
         );
 
-    buttons.forEach(button => {
 
-        button.classList.remove("active");
+    buttons.forEach(
+        button =>
+            button.classList.remove(
+                "active"
+            )
+    );
 
-    });
+
+    clickedButton.classList.add(
+        "active"
+    );
 
 
-    if (clickedButton) {
+    const stockSection =
+        document.getElementById(
+            "stocks-section"
+        );
 
-        clickedButton.classList.add("active");
+
+    const cryptoSection =
+        document.getElementById(
+            "crypto-section"
+        );
+
+
+    if (type === "stocks") {
+
+        stockSection.style.display =
+            "block";
+
+        cryptoSection.style.display =
+            "none";
+
+    }
+
+    else if (
+        type === "crypto"
+    ) {
+
+        stockSection.style.display =
+            "none";
+
+        cryptoSection.style.display =
+            "block";
+
+    }
+
+    else {
+
+        stockSection.style.display =
+            "block";
+
+        cryptoSection.style.display =
+            "block";
 
     }
 
 }
-// ==========================================
-// LAST UPDATED TIME
-// ==========================================
-
-function updateLastUpdatedTime() {
-
-    const lastUpdated =
-        document.getElementById("lastUpdated");
-
-    if (!lastUpdated) {
-        return;
-    }
-
-    const now = new Date();
-
-    const formattedTime =
-        now.toLocaleTimeString(
-            "en-IN",
-            {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit"
-            }
-        );
-
-    const formattedDate =
-        now.toLocaleDateString(
-            "en-IN",
-            {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-            }
-        );
-
-    lastUpdated.textContent =
-        `${formattedDate}, ${formattedTime}`;
-}
 
 
-// Run when page loads
-
-document.addEventListener(
-    "DOMContentLoaded",
-    updateLastUpdatedTime
-);
-// ==========================================
-// VIEW ALL / SHOW LESS
-// ==========================================
-
-let stocksExpanded = false;
-let cryptoExpanded = false;
-
-
-// ==========================================
-// TOGGLE STOCKS
-// ==========================================
+/* =====================================
+   VIEW ALL STOCKS
+===================================== */
 
 function toggleStocks() {
-
-    const stockCards =
-        document.querySelectorAll(
-            "#stocks .market-card"
-        );
-
-    const button =
-        document.getElementById(
-            "stocksViewButton"
-        );
-
-    if (!button) {
-        return;
-    }
-
 
     stocksExpanded =
         !stocksExpanded;
 
 
-    stockCards.forEach(
-        (card, index) => {
+    const cards =
+        document.querySelectorAll(
+            "#stocks .market-card"
+        );
 
-            if (stocksExpanded) {
 
-                card.style.display = "block";
+    cards.forEach(
+        (
+            card,
+            index
+        ) => {
 
-            } else {
+            if (index >= 3) {
 
-                card.style.display =
-                    index < 3
-                        ? "block"
-                        : "none";
+                card.classList.toggle(
+                    "hidden-card",
+                    !stocksExpanded
+                );
 
             }
 
@@ -1935,52 +1798,39 @@ function toggleStocks() {
     );
 
 
-    button.textContent =
-        stocksExpanded
-            ? "Show Less"
-            : "View All";
+    updateViewButtons();
 
 }
 
 
-// ==========================================
-// TOGGLE CRYPTO
-// ==========================================
+/* =====================================
+   VIEW ALL CRYPTO
+===================================== */
 
 function toggleCrypto() {
-
-    const cryptoCards =
-        document.querySelectorAll(
-            "#crypto .market-card"
-        );
-
-    const button =
-        document.getElementById(
-            "cryptoViewButton"
-        );
-
-    if (!button) {
-        return;
-    }
-
 
     cryptoExpanded =
         !cryptoExpanded;
 
 
-    cryptoCards.forEach(
-        (card, index) => {
+    const cards =
+        document.querySelectorAll(
+            "#crypto .market-card"
+        );
 
-            if (cryptoExpanded) {
 
-                card.style.display = "block";
+    cards.forEach(
+        (
+            card,
+            index
+        ) => {
 
-            } else {
+            if (index >= 3) {
 
-                card.style.display =
-                    index < 3
-                        ? "block"
-                        : "none";
+                card.classList.toggle(
+                    "hidden-card",
+                    !cryptoExpanded
+                );
 
             }
 
@@ -1988,9 +1838,230 @@ function toggleCrypto() {
     );
 
 
-    button.textContent =
-        cryptoExpanded
-            ? "Show Less"
-            : "View All";
+    updateViewButtons();
+
+}
+
+
+/* =====================================
+   UPDATE VIEW BUTTONS
+===================================== */
+
+function updateViewButtons() {
+
+    const stockButton =
+        document.getElementById(
+            "stocksViewButton"
+        );
+
+
+    const cryptoButton =
+        document.getElementById(
+            "cryptoViewButton"
+        );
+
+
+    if (stockButton) {
+
+        stockButton.innerText =
+            stocksExpanded
+                ? "Show Less"
+                : "View All Stocks";
+
+    }
+
+
+    if (cryptoButton) {
+
+        cryptoButton.innerText =
+            cryptoExpanded
+                ? "Show Less"
+                : "View All Crypto";
+
+    }
+
+}
+
+
+/* =====================================
+   LAST UPDATED
+===================================== */
+
+function updateLastUpdated() {
+
+    const element =
+        document.getElementById(
+            "lastUpdated"
+        );
+
+
+    if (!element) {
+        return;
+    }
+
+
+    const now =
+        new Date();
+
+
+    element.innerText =
+        "Last updated: " +
+        now.toLocaleTimeString();
+
+}
+
+
+/* =====================================
+   NUMBER FORMAT
+===================================== */
+
+function formatNumber(
+    value
+) {
+
+    const number =
+        Number(value);
+
+
+    if (
+        !Number.isFinite(number)
+    ) {
+
+        return "0.00";
+
+    }
+
+
+    return number.toLocaleString(
+        "en-IN",
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    );
+
+}
+
+
+/* =====================================
+   MARKET CAP FORMAT
+===================================== */
+
+function formatMarketCap(
+    value
+) {
+
+    const number =
+        Number(value);
+
+
+    if (!Number.isFinite(number)) {
+
+        return "$0";
+
+    }
+
+
+    if (
+        number >=
+        1_000_000_000_000
+    ) {
+
+        return "$" +
+            (
+                number /
+                1_000_000_000_000
+            ).toFixed(2) +
+            "T";
+
+    }
+
+
+    if (
+        number >=
+        1_000_000_000
+    ) {
+
+        return "$" +
+            (
+                number /
+                1_000_000_000
+            ).toFixed(2) +
+            "B";
+
+    }
+
+
+    if (
+        number >=
+        1_000_000
+    ) {
+
+        return "$" +
+            (
+                number /
+                1_000_000
+            ).toFixed(2) +
+            "M";
+
+    }
+
+
+    return "$" +
+        formatNumber(number);
+
+}
+
+
+/* =====================================
+   SECURITY HELPERS
+===================================== */
+
+function escapeHTML(
+    value
+) {
+
+    return String(value)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+function escapeJS(
+    value
+) {
+
+    return String(value)
+        .replace(
+            /\\/g,
+            "\\\\"
+        )
+        .replace(
+            /'/g,
+            "\\'"
+        )
+        .replace(
+            /"/g,
+            '\\"'
+        );
 
 }
